@@ -29,3 +29,9 @@ variable "admin_username" {
   type        = string
   default     = "azureuser"
 }
+
+variable "admin_object_id" {
+  description = "Object ID de l'utilisatrice autorisée à lire les secrets du Key Vault"
+  type        = string
+  default     = "ae106343-afa4-4612-81b4-c1797c0e9785"
+}

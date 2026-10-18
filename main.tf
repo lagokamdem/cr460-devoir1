@@ -1,3 +1,5 @@
+data "azurerm_client_config" "current" {}
+
 # Étape 7 - Groupe de ressources
 resource "azurerm_resource_group" "rg" {
   name     = "rg-${var.prefix}-devoir1"
@@ -21,13 +23,48 @@ resource "azurerm_subnet" "subnet" {
   address_prefixes     = ["10.0.1.0/24"]
 }
 
-# Étape 9 - Machine virtuelle
+# Étape 12 - Azure Key Vault
+resource "azurerm_key_vault" "kv" {
+  name                       = "kv-${var.prefix}-lagokamdem"
+  location                   = azurerm_resource_group.rg.location
+  resource_group_name        = azurerm_resource_group.rg.name
+  tenant_id                  = data.azurerm_client_config.current.tenant_id
+  sku_name                   = "standard"
+  soft_delete_retention_days = 7
+  purge_protection_enabled   = false
+  rbac_authorization_enabled = false
+  tags                       = var.tags
+
+  # Accès pour l'identité managée utilisée par Terraform
+  access_policy {
+    tenant_id          = data.azurerm_client_config.current.tenant_id
+    object_id          = data.azurerm_client_config.current.object_id
+    secret_permissions = ["Get", "List", "Set", "Delete", "Purge", "Recover"]
+  }
+
+  # Accès en lecture pour l'utilisatrice (portail Azure)
+  access_policy {
+    tenant_id          = data.azurerm_client_config.current.tenant_id
+    object_id          = var.admin_object_id
+    secret_permissions = ["Get", "List"]
+  }
+}
+
 resource "random_password" "vm" {
   length           = 20
   special          = true
   override_special = "!@#%*()-_=+"
 }
 
+resource "azurerm_key_vault_secret" "vm_password" {
+  name         = "vm-admin-password"
+  value        = random_password.vm.result
+  key_vault_id = azurerm_key_vault.kv.id
+  content_type = "Mot de passe administrateur de vm-cr460"
+  tags         = var.tags
+}
+
+# Étape 9 - Machine virtuelle
 resource "azurerm_network_interface" "nic" {
   name                = "nic-${var.prefix}-vm"
   location            = azurerm_resource_group.rg.location
@@ -47,7 +84,7 @@ resource "azurerm_linux_virtual_machine" "vm" {
   location                        = azurerm_resource_group.rg.location
   size                            = var.vm_size
   admin_username                  = var.admin_username
-  admin_password                  = random_password.vm.result
+  admin_password                  = azurerm_key_vault_secret.vm_password.value
   disable_password_authentication = false
   network_interface_ids           = [azurerm_network_interface.nic.id]
   tags                            = var.tags
