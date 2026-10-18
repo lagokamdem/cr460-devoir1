@@ -8,6 +8,10 @@ on:
 permissions:
   contents: read
 
+env:
+  ACR_NAME: acrcr460lagokamdem
+  IMAGE_NAME: cr460-app
+
 jobs:
   plan:
     name: Terraform Plan
@@ -33,6 +37,9 @@ jobs:
     needs: plan
     runs-on: ubuntu-latest
     environment: production
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - uses: actions/checkout@v4
 
@@ -43,5 +50,21 @@ jobs:
       - name: Terraform Init
         run: terraform init
 
-      - name: Terraform Apply
+      - name: Terraform Apply - creation ACR
+        run: terraform apply -target=azurerm_container_registry.acr -auto-approve -no-color
+
+      - name: Connexion Azure (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build et push de l'image Docker vers ACR
+        run: |
+          az acr login --name $ACR_NAME
+          docker build -t $ACR_NAME.azurecr.io/$IMAGE_NAME:latest ./app
+          docker push $ACR_NAME.azurecr.io/$IMAGE_NAME:latest
+
+      - name: Terraform Apply - deploiement complet
         run: terraform apply -auto-approve -no-color

@@ -64,3 +64,46 @@ resource "azurerm_linux_virtual_machine" "vm" {
     version   = "latest"
   }
 }
+
+# Étape 14 - Azure Container Registry
+resource "azurerm_container_registry" "acr" {
+  name                = "acr${var.prefix}lagokamdem"
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+  sku                 = "Basic"
+  admin_enabled       = true
+  tags                = var.tags
+}
+
+# Étape 10 - Container Docker (Azure Container Instances)
+resource "azurerm_container_group" "aci" {
+  name                = "aci-${var.prefix}"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  os_type             = "Linux"
+  ip_address_type     = "Public"
+  dns_name_label      = "${var.prefix}-lagokamdem"
+  tags                = var.tags
+
+  image_registry_credential {
+    server   = azurerm_container_registry.acr.login_server
+    username = azurerm_container_registry.acr.admin_username
+    password = azurerm_container_registry.acr.admin_password
+  }
+
+  container {
+    name   = "cr460-app"
+    image  = "${azurerm_container_registry.acr.login_server}/cr460-app:latest"
+    cpu    = 0.5
+    memory = 1.0
+
+    ports {
+      port     = 80
+      protocol = "TCP"
+    }
+  }
+}
+
+output "container_url" {
+  value = "http://${azurerm_container_group.aci.fqdn}"
+}
