@@ -21,7 +21,7 @@ variable "tags" {
 variable "vm_size" {
   description = "Taille de la VM"
   type        = string
-  default     = "Standard_B1s"
+  default     = "Standard_B2pts_v2"
 }
 
 variable "admin_username" {
