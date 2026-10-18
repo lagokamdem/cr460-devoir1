@@ -17,3 +17,15 @@ variable "tags" {
     Projet = "DevoirCR460"
   }
 }
+
+variable "vm_size" {
+  description = "Taille de la VM"
+  type        = string
+  default     = "Standard_B1s"
+}
+
+variable "admin_username" {
+  description = "Utilisateur administrateur de la VM"
+  type        = string
+  default     = "azureuser"
+}
